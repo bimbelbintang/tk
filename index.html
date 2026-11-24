@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id"><head><meta charset="utf-8"><title>Mobil Baca TK B</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{--fg:#1d2a44;--card:rgba(255,255,255,.94);--ac:#ff8a00;--ok:#2dbd6e;--bg:#8fd3ff;color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--fg:#f2f5ff;--card:rgba(28,34,56,.94)}}
+:root[data-theme="dark"]{--fg:#f2f5ff;--card:rgba(28,34,56,.94)}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;background:var(--bg);font-family:"Trebuchet MS",system-ui,sans-serif;overflow:hidden;color:var(--fg);-webkit-user-select:none;user-select:none}
+#app{position:relative;height:100%}
+#c{position:absolute;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;border:0;border-radius:14px;padding:8px 14px;background:var(--ac);color:#fff;font-weight:700;font-size:15px;touch-action:manipulation}
+button:disabled{opacity:.45}
+.sel{outline:3px solid #fff;box-shadow:0 0 0 5px var(--fg)}
+#hud{position:absolute;top:6px;left:6px;right:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#hud>*{background:var(--card);padding:4px 10px;border-radius:12px;font-size:14px}
+#hud span:empty{display:none}
+#hud button{color:var(--fg)}
+#hm{margin-left:auto}
+#msg{position:absolute;top:46px;left:50%;transform:translateX(-50%);background:var(--card);padding:6px 12px;border-radius:12px;font-size:14px;max-width:86%;text-align:center}
+#ctrl{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:16px}
+#ctrl button{width:62px;height:62px;font-size:26px;border-radius:50%;padding:0}
+#bS{background:#e5484d}
+#ans{position:absolute;bottom:88px;left:50%;transform:translateX(-50%);display:flex;gap:8px;background:var(--card);padding:8px;border-radius:14px}
+#ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.22)}
+.card{background:var(--card);border-radius:18px;padding:14px 16px;text-align:center;max-width:300px}
+</style></head><body>
+<div id="app"><canvas id="c"></canvas>
+<div id="hud" hidden><span id="lf"></span><span id="lv"></span><span id="dt"></span><span id="tm"></span><button id="hr">🔊</button><button id="hm">🏠</button></div>
+<div id="msg" hidden></div>
+<div id="ans" hidden></div>
+<div id="ctrl" hidden><button id="bL">◀</button><button id="bS">🛞</button><button id="bR">▶</button></div>
+<div id="ov"></div></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(()=>{'use strict';
+const $=s=>document.querySelector(s),pk=a=>a[Math.random()*a.length|0],shuf=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]),ease=p=>p*p*(3-2*p),lerp=(a,b,t)=>a+(b-a)*t;
+
+/* ===== MODUL 1: DATA (bank soal; tambah level/mode di Bagian 2 dan 3) ===== */
+const D={
+lv:[
+{n:'Level 1',w:'ba-tu:baju,bu-ku:buah,ka-ki:kali,ma-ta:mana,su-su:sapu,sa-pu:sapi,ku-da:kuku,bo-la:boba,ra-ma:rasa,la-ba:lama'},
+{n:'Level 2',w:'mo-bil:motor,ma-kan:macan,bu-lan:bunga,ti-kus:tikar,sa-yur:sayap,ke-bun:kecap'},
+{n:'Level 3',w:'se-pa-tu:sepeda,ke-li-ci:keju,ke-pa-la:kelapa,pe-ta-ni:pepaya,pe-pa-ya:petani,se-pe-da:sepatu'}
+].map(l=>({n:l.n,w:l.w.split(',').map(x=>{const[a,b]=x.split(':');return{s:a.split('-'),d:b}})})),
+q:[[],[],[]],
+take(l){const q=D.q[l];while(q.length<5)q.push(...shuf(D.lv[l].w));return q.splice(0,5)},
+snd:l=>'aiueo'.includes(l)?l:l+'e',
+alt(l){const x={b:'dp',d:'bp',p:'bq',m:'n',n:'m',k:'g',g:'k',t:'d',s:'z',l:'r',r:'l'}[l]||'';return pk([...'bcdfghjklmnprstwy'].filter(c=>c!=l&&!x.includes(c)))}};
+
+/* ===== MODUL 1b: BANK SOAL FONIK Level 1-4 (10 per baris) ===== */
+const W=s=>s.replace(/\s+/g,'').split(',');
+const BK={
+l1:W(`ba-tu,ba-ju,ba-ca,ba-ru,ba-pa,ba-ta,ba-hu,ba-ku,ba-gi,ba-li,
+ba-ra,bu-ku,bu-ta,bu-sa,bu-ka,bu-bu,bu-lu,bo-la,bu-di,pi-ta,
+bo-lu,bi-ru,bi-ji,bi-bi,be-ri,be-da,ca-ra,ca-ri,ci-ta,cu-ci,
+cu-ka,cu-ma,da-da,da-du,da-ri,da-ya,du-ta,du-ka,du-ri,di-ri,
+do-sa,ga-ya,ga-ji,ga-ra,gu-la,gu-ru,gu-ci,gi-gi,ha-ti,ha-ri,
+ha-ji,ha-ki,ja-ri,ja-ga,ja-ti,ju-ru,ju-ga,ka-ki,ka-li,ka-ca,
+ka-ya,ka-ta,ka-mi,ku-da,ku-ku,ku-ra,ku-li,ki-ta,ki-ri,ko-ta,
+ko-pi,ke-ju,la-ba,la-ri,la-ma,la-ki,la-gu,lu-pa,lu-ka,li-ma,
+ma-ta,ma-na,ma-ri,ma-ma,ma-ju,ma-ti,mu-ka,mu-da,mu-tu,me-ja,
+me-ra,na-ma,na-ga,ni-la,sa-pu,sa-pi,su-su,su-ka,sa-ya,ti-ga`),
+l2:W(`bulan,makan,minum,tikus,sayur,kebun,mobil,motor,macan,bunga,
+pensil,tangan,jalan,badan,hutan,karpet,pagar,tembok,ember,kasur,
+buntut,kantor,kalung,kambing,kancing,kandang,kotak,gunting,bangku,tinggal,
+lembut,lemon,salam,malam,hitam,kolam,dalam,tenang,senang,ringan,
+sabun,ayam,garam,jarum,pisang,kuning,burung,gajah,tembak,tampan,
+ikan,jahat,kapak,bebek,itik,botol,kertas,dompet,mangkuk,sendok,
+tomat,kerang,rambut,pundak,punggung,lengan,perut,mulut,hidung,jantung,
+tanah,rumah,sawah,sekolah,masjid,pasar,kantin,taman,bukit,gunung,
+awan,angin,hujan,petir,bintang,embun,kabut,lautan,pasang,gelombang,
+kakak,adik,nenek,kakek,bapak,teman,murid,pelajar,penjual,pemain`),
+l3a:W(`nyamuk,nyala,nyata,nyanyi,nyaman,nyaring,nyonya,nyeri,nyawa,nyiur,
+nyinyir,ngeri,ngobrol,nganga,ngarai,ngilu,ngorok,nyanyian,nyenyak,nyiru,
+menyapu,menyapa,menyanyi,menyala,menyiram,menyikat,menyuruh,menyimpan,menyusun,menyebut,
+menyalin,menyelam,menyerah,menyewa,menyambut,menyentuh,menyeberang,menyisir,menyakiti,menyayangi,
+mengajar,mengaji,mengambil,mengantuk,mengapa,mengangkat,mengikat,mengecat,mengetik,mengisi,
+mengusir,mengurus,mengukur,mengunci,mengubah,mengusap,mengayuh,mengenal,mengerti,mengejar,
+mengirim,menggambar,menggosok,menggunting,menggali,menggeser,menggulung,menggoreng,menggendong,menggigit,
+menghitung,mengepel,mengepak,mengelap,mengemas,mengeja,mengebut,mengeluh,mengemis,mengintip,
+menyuap,menyatu,menyiapkan,menyampul,menyelip,menyesal,menyergap,menyunting,menyontek,menyubit,
+mengamati,mengantar,mengasah,mengaduk,mengalir,mengatur,mengelus,mengobati,mengulang,mengucap`),
+l3b:W(`membaca,menulis,membuka,menutup,membawa,membeli,memasak,memakai,memanjat,memotong,
+berlari,bermain,berjalan,berenang,bernyanyi,berlayar,berkata,bersepeda,berdoa,berhenti,
+dimakan,diminum,dibaca,ditulis,dibawa,dibeli,dipakai,dilihat,didengar,dicuci,
+makanan,minuman,bacaan,mainan,tulisan,lukisan,pakaian,hiburan,harapan,pelajaran,
+ambilkan,bacakan,tuliskan,masukkan,bukakan,belikan,bukunya,rumahnya,tasnya,topinya`),
+l4:W(`kue,buah,suara,buaya,kuat,duel,saat,laut,air,baik,
+pantai,sungai,pakai,santai,damai,kail,main,mau,tiup,tiang,
+siang,biasa,kiat,pion,poin,koin,tuan,suami,tauge,kuaci,
+lauk,bau,kaum,saudara,keluarga,perempuan,kuali,kualitas,pasien,mual,
+suap,duit,ruang,buat,kuas,tuas,luas,dua,tua,rias,
+bioskop,biola,kiamat,piala,piano,radio,video,siaga,biar,riang,
+truk,trik,prosa,proses,produk,program,prangko,kreasi,krim,kran,
+drama,drum,gram,gratis,grup,blok,blus,plastik,plakat,klinik,
+klip,klub,stasiun,stempel,strategi,studio,stok,spons,sprei,spesial,
+skala,skema,skenario,slogan,trauma,tradisi,praktik,prestasi,kristal,krisis`)
+};
+D.lv=[{n:'Level 1',jd:10,k:1,pool:BK.l1.map(w=>w.split('-'))},{n:'Level 2',jd:20,k:2,pool:BK.l2},{n:'Level 3',jd:20,k:2,pool:BK.l3a.concat(BK.l3b)},{n:'Level 4',jd:30,k:4,pool:BK.l4}];
+D.take=l=>{const L=D.lv[l],P=shuf(L.pool);if(L.k==1)return P.map(s=>{const w=s.join(''),o=L.pool.filter(x=>x.join('')!=w),e=o.filter(x=>x[0][0]==s[0][0]);return{s,d:pk(e.length?e:o).join('')}});
+const r=[];for(let i=0;i+L.k<=P.length;i+=L.k){const s=P.slice(i,i+L.k),t=s.slice();t[Math.random()*L.k|0]=pk(L.pool.filter(x=>!s.includes(x)));r.push({s,d:t.join(' ')})}return r};
+
+/* ===== MODUL 2: SUARA (hanya speechSynthesis opsional + bunyi efek; tanpa mikrofon) ===== */
+const A={tts:'speechSynthesis' in window,ctx:null,
+say(t){if(!A.tts)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='id-ID';u.rate=.8;speechSynthesis.speak(u)}catch(e){}},
+tone(f,d){try{A.ctx=A.ctx||new(window.AudioContext||window.webkitAudioContext)();const o=A.ctx.createOscillator(),g=A.ctx.createGain();o.frequency.value=f;g.gain.value=.07;o.connect(g);g.connect(A.ctx.destination);o.start();o.stop(A.ctx.currentTime+d)}catch(e){}}};
+
+/* ===== MODUL 3: DUNIA 3D (scene, kendaraan, lingkungan, lalu lintas) ===== */
+const R=new THREE.WebGLRenderer({canvas:$('#c'),antialias:false});R.setPixelRatio(Math.min(devicePixelRatio||1,1.5));
+const S=new THREE.Scene(),cam=new THREE.PerspectiveCamera(60,1,.1,300);
+const hemi=new THREE.HemisphereLight(0xffffff,0x6a8a50,.85),sun=new THREE.DirectionalLight(0xffffff,.7);sun.position.set(20,40,10);S.add(hemi,sun);S.fog=new THREE.Fog(0x8fd3ff,60,200);
+const mc={},M=c=>mc[c]||(mc[c]=new THREE.MeshLambertMaterial({color:c}));
+const GE={b:new THREE.BoxGeometry(1,1,1),s:new THREE.SphereGeometry(.5,8,6),c:new THREE.CylinderGeometry(.5,.5,1,8),k:new THREE.ConeGeometry(.5,1,4)};
+const add=(g,k,c,x,y,z,sx,sy,sz)=>{const m=new THREE.Mesh(GE[k],M(c));m.position.set(x,y,z);m.scale.set(sx,sy,sz);g.add(m);return m};
+const bx=(g,c,x,y,z,w,h,d)=>add(g,'b',c,x,y,z,w,h,d),sp=(g,c,x,y,z,r)=>add(g,'s',c,x,y,z,r*2,r*2,r*2),cy=(g,c,x,y,z,r,h)=>add(g,'c',c,x,y,z,r*2,h,r*2);
+const TL=[],segs=[],TR=[],CL=[],BR=[],TW=[];
+const T=(ms,f)=>new Promise(r=>TW.push({t:0,ms,f,r})),wait=ms=>T(ms,()=>{});
+const TH=[{n:'Pagi cerah',sky:0x8fd3ff,gr:0x6bbf59,hi:.85,su:.7,sc:0xffffff},{n:'Sore hari',sky:0xffb27a,gr:0x7e9c4a,hi:.7,su:.85,sc:0xffc890},{n:'Mendung',sky:0xaab8c8,gr:0x6a9b6a,hi:.9,su:.35,sc:0xdde6f0}];
+const gm=new THREE.MeshLambertMaterial({color:0x6bbf59});
+function theme(i){const t=TH[((i%TH.length)+TH.length)%TH.length];S.background=new THREE.Color(t.sky);S.fog.color.set(t.sky);gm.color.set(t.gr);hemi.intensity=t.hi;sun.intensity=t.su;sun.color.set(t.sc)}
+function lab(t,bg,fg,sz){const c=document.createElement('canvas');c.width=256;c.height=64;const x=c.getContext('2d');x.fillStyle=bg;x.fillRect(0,0,256,64);x.fillStyle=fg;x.font='bold '+sz+'px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(t,128,34);return new THREE.CanvasTexture(c)}
+function person(sh,hr,girl){const g=new THREE.Group();bx(g,0x3a4a7a,0,.45,0,.5,.9,.35);bx(g,sh,0,1.3,0,.6,.8,.4);sp(g,0xffd2a8,0,1.95,0,.28);const h=sp(g,hr,0,2.05,0,.3);h.scale.y=.45;if(girl){sp(g,hr,-.3,1.9,0,.12);sp(g,hr,.3,1.9,0,.12)}return g}
+function wheels(g,pts,r){pts.forEach(([x,z])=>{cy(g,0x222222,x,r,z,r,.35).rotation.z=Math.PI/2})}
+function car(col,roof){const g=new THREE.Group();bx(g,col,0,.75,0,2.1,.8,4.2);if(roof)bx(g,0x9fd8ff,0,1.5,.3,1.8,.75,2.2);else bx(g,0x333344,0,1.25,.95,1.6,.5,.6);wheels(g,[[-1,-1.4],[1,-1.4],[-1,1.4],[1,1.4]],.45);bx(g,0xffee88,-.7,.8,-2.12,.4,.25,.05);bx(g,0xffee88,.7,.8,-2.12,.4,.25,.05);return g}
+function moto(col,bike){const g=new THREE.Group();bx(g,col,0,.7,0,.35,.3,1.6);wheels(g,[[0,-.8],[0,.8]],bike?.4:.35);const p=person(pk([0xff5555,0x55aaff,0xffaa00]),0x222222,Math.random()<.4);p.scale.setScalar(.6);p.position.set(0,.45,0);g.add(p);return g}
+function tree(p,x,z){cy(p,0x7a5230,x,1.2,z,.25,2.4);sp(p,0x2f9e44,x,3.4,z,1.5);sp(p,0x4fbf5a,x,4.5,z,1)}
+function pole(p,x,z,s){cy(p,0x777777,x,4,z,.12,8);bx(p,0x777777,x-s*.8,7.6,z,2,.15,.15);sp(p,0xfff3a0,x-s*1.6,7.4,z,.25)}
+function bld(p,s,z,k){const x=s*19,h=6+(k%3)*2.5,c=pk([0xf6c8a0,0xc9e4ca,0xbcd4f6,0xf7e08c,0xe8b4bc]),fx=x-s*4.05;
+if(k%2){bx(p,c,x,h/2,z,8,h,9);bx(p,0x8a5a44,x,h+.25,z,8.6,.5,9.6);bx(p,0x8a5a44,fx,1.2,z,.1,2.4,1.6);[-2.6,2.6].forEach(o=>bx(p,0xbfe6ff,fx,h*.6,z+o,.1,1.6,1.6))}
+else{bx(p,c,x,2.5,z,8,5,9);add(p,'k',0xc0504d,x,6.5,z,12,3.2,12).rotation.y=Math.PI/4;bx(p,0x8a5a44,fx,1.1,z,.1,2.2,1.4);bx(p,0xbfe6ff,fx,3,z+2.6,.1,1.2,1.2)}}
+function station(p,x,z){const s=new THREE.Group();bx(s,0xffffff,0,4.4,0,7,.5,10);bx(s,0xe03a3a,0,4.1,0,7.2,.3,10.2);[[-3,-4],[3,-4],[-3,4],[3,4]].forEach(([a,b])=>cy(s,0xdddddd,a,2.1,b,.2,4.2));bx(s,0x999999,0,.1,0,2,.2,9);[-2.5,2.5].forEach(b=>{bx(s,0xe03a3a,0,1,b,.7,2,.8);bx(s,0x88ddff,-.36,1.6,b,.05,.4,.5)});
+const m=new THREE.Mesh(new THREE.PlaneGeometry(6,1.5),new THREE.MeshBasicMaterial({map:lab('POM BENSIN','#e03a3a','#ffffff',34)}));m.position.set(-3.6,5.5,0);m.rotation.y=-Math.PI/2;s.add(m);s.position.set(x,0,z);p.add(s);return s}
+function tlight(p){cy(p,0x444444,8.4,2.5,-58,.1,5);bx(p,0x222222,8.4,5.4,-58,.6,1.6,.6);const r=sp(p,0,8.4,5.9,-57.65,.22),g=sp(p,0,8.4,4.9,-57.65,.22);r.material=new THREE.MeshLambertMaterial({color:0xff2222});g.material=new THREE.MeshLambertMaterial({color:0x114422});TL.push({r,g})}
+const SH=[0xff6b6b,0x4dabf7,0xffd43b,0x69db7c,0xda77f2],HR=[0x222222,0x6b3b12,0xb5651d];
+function seg(k){const g=new THREE.Group(),Rt=new THREE.Group(),Lt=new THREE.Group();g.add(Rt,Lt);g.Rt=Rt;g.peds=[];
+for(let i=0;i<10;i++){bx(g,0xffd23f,-2,.06,-i*10-5,.2,.02,4);bx(g,0xffffff,3.8,.06,-i*10-5,.15,.02,3)}
+for(let x=-7;x<=7;x+=2)bx(g,0xffffff,x,.07,-60,.9,.02,3);tlight(Rt);
+const sides=[[Rt,1],[Lt,-1]];
+for(let j=0;j<4;j++)sides.forEach(([p,s])=>{const z=-j*25-12;if(s==1&&j==3)station(p,17,z);else bld(p,s,z,j+k)});
+for(let j=0;j<5;j++)sides.forEach(([p,s])=>tree(p,s*10.5,-j*20-8));
+for(let j=0;j<4;j++)sides.forEach(([p,s])=>pole(p,s*8.6,-j*25-20,s));
+sides.forEach(([p,s])=>{for(let i=0;i<2;i++){const m=person(pk(SH),pk(HR),Math.random()<.5);m.scale.setScalar(.7);m.position.set(s*(9.4+i*1.8),.1,-Math.random()*100);m.userData.v=(Math.random()<.5?1:-1)*(1.2+Math.random());m.rotation.y=m.userData.v>0?Math.PI:0;p.add(m);g.peds.push(m)}});
+return g}
+function buildWorld(){const gr=new THREE.Mesh(new THREE.PlaneGeometry(700,900),gm);gr.rotation.x=-Math.PI/2;gr.position.set(0,0,-150);S.add(gr);
+bx(S,0x3b3f4a,0,.03,-150,16,.04,900);[-10,10].forEach(x=>bx(S,0xb9b9b9,x,.08,-150,4,.16,900));
+for(let k=0;k<3;k++){const g=seg(k);g.position.z=20-k*100;S.add(g);segs.push(g)}
+[[-6,'car',1],[-6,'car',1],[-3.6,'moto',1],[-3.6,'bike',1],[6.6,'bike',-1],[6.6,'moto',-1],[6.6,'car',-1]].forEach(([x,t,d],i)=>{const col=pk([0xe53935,0x1e88e5,0xfdd835,0x43a047,0x8e24aa,0xfb8c00]),m=t=='car'?car(col,true):moto(col,t=='bike');m.position.set(x,0,-i*30+20);m.rotation.y=d>0?Math.PI:0;m.userData.v=d>0?(t=='car'?12:8):-(t=='car'?7:3.5);S.add(m);TR.push(m)});
+for(let i=0;i<7;i++){const g=new THREE.Group();[0,1,2].forEach(j=>sp(g,0xffffff,j*3-3,j%2,0,3.2-j%2));g.position.set(-100+i*34,32+i%3*4,-60-i*25);S.add(g);CL.push(g)}
+for(let i=0;i<5;i++){const g=new THREE.Group();sp(g,0x333333,0,0,0,.25);g.wl=bx(g,0x444444,-.4,0,0,.8,.05,.3);g.wr=bx(g,0x444444,.4,0,0,.8,.05,.3);g.a=i*1.3;S.add(g);BR.push(g)}}
+
+/* ===== MODUL 4: PEMAIN (mobil + karakter) & papan bacaan 3D ===== */
+const CH=[{n:'Dito',s:0x2a7fff,h:0x2b1a10,g:0},{n:'Nia',s:0xff5ca8,h:0x2b1a10,g:1},{n:'Raka',s:0x2dbd6e,h:0x7a4a1a,g:0},{n:'Sari',s:0xffc21a,h:0x1b1b1b,g:1}],COL=[0xe53935,0x1e88e5,0x43a047,0x8e24aa,0xfb8c00,0x00acc1];
+const P={g:null,ch:null};
+function mkP(col){if(P.g)S.remove(P.g);if(P.ch&&P.ch.parent)P.ch.parent.remove(P.ch);const g=car(col,false),c=CH[G.ch];P.ch=person(c.s,c.h,c.g);P.ch.scale.setScalar(.75);P.ch.position.set(0,.65,.3);g.add(P.ch);g.position.set(2.5,0,0);S.add(g);P.g=g}
+const bc=document.createElement('canvas');bc.width=512;bc.height=256;const bg=bc.getContext('2d'),bt=new THREE.CanvasTexture(bc),board=new THREE.Group();
+bx(board,0x7a5230,-3.2,2,0,.3,4,.3);bx(board,0x7a5230,3.2,2,0,.3,4,.3);const bp=new THREE.Mesh(new THREE.PlaneGeometry(8,4),new THREE.MeshBasicMaterial({map:bt}));bp.position.set(0,4,.2);board.add(bp);board.visible=false;board.scale.setScalar(1.2);S.add(board);
+function drawB(t){bg.fillStyle='#fffbe6';bg.fillRect(0,0,512,256);bg.strokeStyle='#ff8a00';bg.lineWidth=14;bg.strokeRect(7,7,498,242);bg.fillStyle='#1d2a44';bg.font='bold '+(t.length>8?84:t.length>5?110:140)+'px sans-serif';bg.textAlign='center';bg.textBaseline='middle';bg.fillText(t,256,136);bt.needsUpdate=true}
+const pomS=station(S,16,-12);pomS.visible=false;
+/* pintu tol (GT) & rumah (HS) */
+const GT=new THREE.Group(),HS=new THREE.Group();
+bx(GT,0x888888,0,6.2,0,16,.8,1);[-7.5,7.5].forEach(x=>bx(GT,0x888888,x,3,0,.8,6,1));bx(GT,0xcccccc,0,1,0,1.2,2,1.2);bx(GT,0xe03a3a,.9,1.3,1.2,.3,.6,.5);
+const arm=new THREE.Group();arm.position.set(.6,1.8,0);bx(arm,0xffffff,2.3,0,0,4.6,.2,.2);bx(arm,0xe03a3a,3,0,0,.6,.22,.22);GT.add(arm);GT.arm=arm;
+GT.sg=new THREE.Mesh(new THREE.PlaneGeometry(8,2),new THREE.MeshBasicMaterial({map:lab('MASUK TOL','#0a7a4a','#ffffff',30)}));GT.sg.position.set(0,4.8,.55);GT.add(GT.sg);GT.visible=false;S.add(GT);
+bx(HS,0xffe2b0,2.5,2.5,0,7,5,6);add(HS,'k',0xc0504d,2.5,6.5,0,11,3.5,11).rotation.y=Math.PI/4;bx(HS,0x8a5a44,2.5,1.2,3.05,1.6,2.4,.1);bx(HS,0xbfe6ff,.6,3,3.05,1.4,1.2,.1);bx(HS,0xbfe6ff,4.4,3,3.05,1.4,1.2,.1);HS.visible=false;S.add(HS);
+
+/* ===== MODUL 5: UI ringkas ===== */
+const hud=()=>{$('#lf').textContent=G.lives?'❤️':'🖤';$('#lv').textContent=D.lv[G.lv].n;$('#dt').textContent=G.done+'/'+G.tot};
+const msg=t=>{const m=$('#msg');m.textContent=t||'';m.hidden=!t};
+const show=h=>['#hud','#ctrl'].forEach(s=>$(s).hidden=!h);
+const U={ov(h){const o=$('#ov');o.innerHTML=h;o.hidden=!h},
+home(){G.sid++;G.st='home';G.sp=0;G.steer=false;G.foc=null;board.visible=false;pomS.visible=false;segs.forEach(s=>s.Rt.visible=true);show(0);msg('');$('#ans').hidden=true;
+const c=x=>'#'+x.toString(16).padStart(6,'0');
+U.ov(`<div class="card"><h2 style="margin:0 0 6px">🚗 Mobil Baca</h2><div style="display:flex;gap:6px;justify-content:center">${CH.map((h,i)=>`<button data-c="${i}" class="${i==G.ch?'sel':''}" style="background:${c(h.s)};padding:6px 8px">${h.g?'👧':'👦'}<br><small>${h.n}</small></button>`).join('')}</div><p style="margin:8px 0 4px;font-size:13px">Pilih mode</p><button id="mD">⭐ Dasar</button> <button id="mL" ${G.unl?'':'disabled'}>${G.unl?'🚀':'🔒'} Lancar</button><p id="nt" style="font-size:12px;margin:6px 0 0"></p></div>`)}};
+
+/* ===== MODUL 6: LOGIKA GAME (alur Dasar; Bagian 2 dan 3 menambah isi di sini) ===== */
+const G={st:'home',ch:0,lv:0,round:-1,unl:0,lives:1,q:[],done:0,carN:0,sp:0,vx:0,steer:false,foc:null,sid:0,tl:0,n:1,w:null,o:[],sel:-1,
+begin(){G.round++;G.sid++;theme(G.round);G.q=D.take(G.lv);G.done=0;G.lives=1;G.sp=0;G.vx=0;G.foc=null;mkP(COL[G.carN%COL.length]);segs.forEach(s=>s.Rt.visible=true);pomS.visible=false;board.visible=false;U.ov('');$('#ans').hidden=true;show(1);hud();G.steer=true;G.st='idle';msg('🌤 '+TH[G.round%TH.length].n+' · tekan 🛞 untuk maju')},
+board(t){if(t==null){board.visible=false;return}const f=board.visible;drawB(t);board.position.set(P.g.position.x,0,P.g.position.z-11);if(!f){board.visible=true;T(300,p=>board.scale.setScalar(1.2*Math.max(.01,ease(p))))}},
+async drive(){const id=G.sid;G.st='drive';msg('');await T(2400,p=>G.sp=p<.8?16:16*(1-p)/.2);G.sp=0;if(id!=G.sid)return;G.show()},
+show(){G.w=G.q[0];G.n=1;G.board(G.w.s[0]);G.st='read';msg(G.lv?'Baca kata pertama 🗣️':'Bunyikan suku kata pertama 🗣️');G.tl=D.lv[G.lv].jd},
+rev(){G.n++;G.board(G.w.s.slice(0,G.n).join(G.lv?' ':'-'));A.tone(660,.15);if(G.n<G.w.s.length)G.tl=D.lv[G.lv].jd;else G.choose()},
+choose(){G.st='choose';G.tl=0;G.o=shuf([{t:G.w.s.join(G.lv?' ':''),ok:1},{t:G.w.d,ok:0}]);G.panel();msg('Dengarkan, mana yang sama dengan bacaanmu? 👂')},
+panel(){const a=$('#ans');a.innerHTML=G.o.map((o,i)=>`<button data-i="${i}">🔊 ${i+1}${A.tts?'':' '+o.t}</button>`).join('')+'<button id="yk" disabled style="background:var(--ok)">Yakin ✔</button>';a.hidden=false;G.sel=-1},
+async chk(){const id=G.sid,o=G.o[G.sel];if(!o)return;$('#ans').hidden=true;
+if(G.st=='choose'){
+if(o.ok){A.tone(880,.25);msg('✅ Benar! Hebat!');G.q.shift();G.done++;hud();board.visible=false;await wait(1100);if(id!=G.sid)return;if(G.done>=G.tot)G.fin();else{G.st='idle';msg('Tekan 🛞 untuk soal berikutnya')}}
+else{A.tone(180,.5);msg('❌ Belum tepat... bensin habis!');G.lives=0;G.q.push(G.q.shift());hud();G.steer=false;await wait(1400);if(id!=G.sid)return;G.pom()}
+}else if(G.st=='fuel'){if(o.ok)G.newCar();else{A.tone(180,.3);msg('Coba dengar lagi ya 👂');G.panel()}}},
+async pom(){const id=G.sid;G.st='pom';board.visible=false;segs.forEach(s=>s.Rt.visible=false);pomS.visible=true;msg('⛽ Mobil masuk pom bensin...');const c=P.g,x0=c.position.x,z0=c.position.z;
+await T(2800,p=>{const e=ease(p);c.position.set(lerp(x0,13.8,e),0,lerp(z0,-9.5,e));c.rotation.y=-Math.sin(p*Math.PI)*.9});if(id!=G.sid)return;G.fuelQ()},
+fuelQ(){const L=G.w.s[0][0];G.st='fuel';G.board(L.toUpperCase()+' '+L);G.o=shuf([{t:D.snd(L),ok:1},{t:D.snd(D.alt(L)),ok:0}]);G.panel();msg('⛽ Bunyi huruf “'+L.toUpperCase()+'” yang mana? 👂')},
+async newCar(){const id=G.sid;G.st='swap';$('#ans').hidden=true;board.visible=false;msg('⛽ Mengisi bensin...');A.tone(880,.2);await wait(1200);if(id!=G.sid)return;
+msg('🚘 Mobil baru untukmu!');const old=P.g,ch=P.ch,cp=old.position.clone();G.foc=cp;old.remove(ch);ch.position.set(cp.x-2.4,0,cp.z);ch.scale.setScalar(.9);S.add(ch);
+await T(1200,p=>{old.position.z=cp.z-ease(p)*60});S.remove(old);
+G.carN++;const N=car(COL[G.carN%COL.length],false);N.position.set(cp.x,0,cp.z+40);S.add(N);
+await T(1600,p=>{N.position.z=cp.z+40*(1-ease(p))});if(id!=G.sid)return;
+await T(900,p=>{const e=ease(p);ch.position.set(lerp(cp.x-2.4,cp.x,e),Math.sin(p*Math.PI)*2+e*.65,lerp(cp.z,cp.z+.3,e));ch.scale.setScalar(lerp(.9,.75,e))});
+S.remove(ch);ch.position.set(0,.65,.3);ch.scale.setScalar(.75);N.add(ch);P.g=N;P.ch=ch;G.foc=null;msg('🚗 Naik mobil baru, ayo jalan!');
+await T(2200,p=>{const e=ease(p);N.position.set(lerp(cp.x,2.5,e),0,lerp(cp.z,0,e));N.rotation.y=Math.sin(p*Math.PI)*.9});if(id!=G.sid)return;
+pomS.visible=false;segs.forEach(s=>s.Rt.visible=true);G.lives=1;hud();G.vx=0;G.steer=true;G.st='idle';msg('✨ Lanjut membaca! Tekan 🛞')},
+fin(){G.st='fin';G.steer=false;show(0);$('#ans').hidden=true;msg('');if(G.lv==2){G.unl=1;try{localStorage.setItem('mb_unl','1')}catch(e){}}A.tone(988,.3);
+U.ov(`<div class="card"><h2 style="margin:0">🎉 Finish! ⭐</h2><p>${D.lv[G.lv].n} selesai.<br>${G.lv==2?'Dasar lulus! Mode Lancar terbuka 🔓':'Level berikutnya terbuka 🔓'}</p><button id="mu">Mulai</button> <button id="hm2">🏠</button></div>`)}};
+/* alur Level 1-4: gerbang tol, e-toll, rumah TERBAIK */
+const b0=G.begin;G.begin=function(){b0();GT.visible=false;HS.visible=false;G.tot=G.q.length;hud();if(G.lv)G.gate()};
+G.gate=async function(){const id=G.sid,out=G.lv==2;G.st='gate';G.steer=false;GT.sg.material.map=lab(out?'KELUAR TOL':'MASUK TOL','#0a7a4a','#ffffff',30);GT.sg.material.needsUpdate=true;GT.arm.rotation.z=0;GT.position.z=-40;GT.visible=true;msg('🛣️ '+(out?'Keluar tol':'Masuk tol')+': menuju pintu tol');
+await T(2600,p=>{GT.position.z=lerp(-40,-9,ease(p));G.sp=74*p*(1-p)});G.sp=0;if(id!=G.sid)return;
+msg('💳 Tap e-Toll di pintu tol!');const a=$('#ans');a.innerHTML='<button id="et" style="background:var(--ok)">💳 Tap e-Toll</button>';a.hidden=false};
+G.tap=async function(){const id=G.sid;$('#ans').hidden=true;A.tone(1200,.15);msg('✅ Palang terbuka!');await T(700,p=>{GT.arm.rotation.z=ease(p)*1.3});
+await T(2400,p=>{GT.position.z=lerp(-9,28,ease(p));G.sp=92*p*(1-p)});G.sp=0;if(id!=G.sid)return;GT.visible=false;G.vx=0;G.steer=true;G.st='idle';msg(G.lv==2?'🌳 Sudah keluar tol. Tekan 🛞':'🛣️ Di jalan tol. Tekan 🛞')};
+G.fin=async function(){const id=G.sid;G.st='fin';G.steer=false;$('#ans').hidden=true;msg('');A.tone(988,.3);show(0);
+if(G.lv<3){G.sv=G.lv+1;try{localStorage.setItem('mb_lv',G.sv)}catch(e){}
+U.ov(`<div class="card"><h2 style="margin:0">🎉 Finish! ⭐</h2><p>${D.lv[G.lv].n} selesai.<br>${['🛣️ Masuk tol menuju Level 2','🛣️ Keluar tol menuju Level 3','🛣️ Masuk tol lagi menuju Level 4'][G.lv]}</p><button id="mu">Mulai</button> <button id="hm2">🏠</button></div>`);return}
+G.unl=1;G.sv=0;try{localStorage.setItem('mb_unl','1');localStorage.setItem('mb_lv','0')}catch(e){}
+msg('🏠 Menuju rumah...');HS.visible=true;HS.position.z=-45;await T(3000,p=>{HS.position.z=lerp(-45,-13,ease(p));G.sp=64*p*(1-p)});G.sp=0;if(id!=G.sid)return;msg('');A.tone(1175,.4);
+U.ov(`<div class="card"><div style="font-size:44px">🏆</div><h2 style="margin:0">TERBAIK!</h2><p>Sampai rumah dengan selamat ⭐⭐⭐<br>Mode Lancar terbuka 🔓</p><button id="hm2">🏠 Beranda</button></div>`)};
+drawB=function(t){const L=G.lv==1||G.lv==3;bg.fillStyle=L?'#06210f':'#fffbe6';bg.fillRect(0,0,512,256);bg.strokeStyle=L?'#2dd36f':'#ff8a00';bg.lineWidth=14;bg.strokeRect(7,7,498,242);bg.fillStyle=L?'#ffd23f':'#1d2a44';bg.textAlign='center';bg.textBaseline='middle';
+const w=t.split(' '),h=Math.ceil(w.length/2),ln=w.length>1?[w.slice(0,h).join(' '),w.slice(h).join(' ')]:[t];ln.forEach((s,i)=>{let z=ln.length>1?80:140;do{bg.font='bold '+z+'px sans-serif';z-=6}while(bg.measureText(s).width>460&&z>24);bg.fillText(s,256,ln.length>1?72+i*104:136)});bt.needsUpdate=true};
+/* ===== MODUL 8: MODE LANCAR (cerita 4 paragraf di lampu merah, bebas nyetir 300 detik) ===== */
+TH.push({n:'Senja ungu',sky:0xc9a0dc,gr:0x6f8f5a,hi:.7,su:.6,sc:0xffb0c0},{n:'Pagi berkabut',sky:0xdfe8ee,gr:0x7fb069,hi:.95,su:.4,sc:0xffffff});
+const ST=[
+{t:['Pagi itu # bangun dan mandi. Ibu sudah memasak nasi.','# makan nasi dan telur. Ayah minum kopi di meja.','Lalu # memakai baju dan sepatu. Ia pamit kepada ibu.','Ayah mengantar # ke sekolah. # senang sekali.']},
+{t:['# melihat kucing kecil di taman. Bulunya putih dan lembut.','Kucing itu lapar. # memberi ikan dan air.','Kucing makan dengan lahap. Lalu ia mengeong pelan.','# pulang dengan hati senang. Besok # akan datang lagi.']},
+{t:['Sore ini # bermain bola di lapangan. Kakak ikut bermain.','Bola menggelinding ke arah pohon. # berlari mengejar bola.','Dengan cepat # menendang bola kepada kakak. Kakak tertawa.','Mereka lelah dan minum air. Mereka pulang dengan gembira.']},
+{t:['Langit mendung dan hujan turun. # duduk di dekat jendela.','Ibu membuat teh hangat. Ayah membaca buku.','Hujan berhenti dan pelangi muncul. Warnanya indah sekali.','# berlari keluar rumah. Ia melompat di genangan air.']},
+{t:['Hari Minggu # pergi ke pasar bersama ibu. Pasar sangat ramai.','Ibu membeli sayur, ikan, dan buah. # membawa tas kecil.','Di pasar ada ayam, bebek, dan kambing. # melihatnya dengan senang.','Mereka naik mobil dan pulang. Ibu memasak sayur yang enak.']},
+{t:['Di depan rumah ada pohon mangga. Buahnya besar dan kuning.','# dan nenek memetik buah mangga. Nenek berkata, hati-hati.','Nenek mengupas mangga itu. Rasanya manis dan segar.','# berterima kasih kepada nenek. Mereka makan mangga bersama.']}];
+ST.q=[];D.lv.push({n:'Lancar',jd:300});
+const TG=new THREE.Group();cy(TG,0x444444,5.8,3,0,.15,6);bx(TG,0x444444,4.15,6,0,3.3,.2,.2);bx(TG,0x222222,2.5,5.4,0,.8,2,.6);bx(TG,0xffffff,2.5,.07,2.5,5,.02,.5);
+const lr=sp(TG,0,2.5,6,.35,.28),lg=sp(TG,0,2.5,4.9,.35,.28);lr.material=new THREE.MeshLambertMaterial({color:0xff2222});lg.material=new THREE.MeshLambertMaterial({color:0x114422});TG.visible=false;S.add(TG);
+const setL=r=>{lr.material.color.set(r?0xff2222:0x551111);lg.material.color.set(r?0x114422:0x22dd44)};
+const sc=document.createElement('div');sc.id='sc';sc.hidden=true;sc.style.cssText='position:absolute;top:44px;left:8px;right:8px;max-width:420px;margin:auto;background:var(--card);border-radius:14px;padding:10px 12px;font-size:17px;line-height:1.4';$('#app').appendChild(sc);
+const bL=G.begin;G.begin=function(){if(!G.mode)return bL();
+G.round++;G.sid++;theme(G.round);G.lv=4;while(ST.q.length<3)ST.q.push(...shuf(ST));G.q=ST.q.splice(0,3);G.done=0;G.tot=3;G.lives=1;G.sp=0;G.vx=0;G.foc=null;G.free=0;
+mkP(COL[G.carN%COL.length]);segs.forEach(s=>s.Rt.visible=true);pomS.visible=false;board.visible=false;GT.visible=false;HS.visible=false;TG.visible=false;sc.hidden=true;U.ov('');$('#ans').hidden=true;show(1);hud();G.steer=true;G.st='idle';msg('🌤 '+TH[G.round%TH.length].n+' · tekan 🛞: baca cerita di lampu merah')};
+const dL=G.drive;G.drive=function(){if(!G.mode)return dL();G.lightIn()};
+G.lightIn=async function(){const id=G.sid;G.st='drive';msg('');TG.position.z=-45;TG.visible=true;setL(1);await T(2600,p=>{TG.position.z=lerp(-45,-12,ease(p));G.sp=66*p*(1-p)});G.sp=0;if(id!=G.sid)return;G.story()};
+G.story=function(){G.w=G.q[0];G.pi=0;G.st='story';G.par()};
+G.par=function(){const i=G.pi;sc.hidden=false;sc.innerHTML=`<small>🔴 Lampu merah · bagian ${i+1} dari 4</small><p style="margin:6px 0">${G.w.t[i].replace(/#/g,CH[G.ch].n)}</p><button id="sn">${i<3?'Lanjut ▶':'Selesai baca ✔'}</button>`};
+sc.addEventListener('click',e=>{if(e.target.id!='sn')return;if(G.pi<3){G.pi++;G.par()}else G.startFree()});
+G.startFree=function(){sc.hidden=true;setL(0);A.tone(880,.2);G.st='free';G.fe=Date.now()+3e5;G.steer=true;G.free=1;msg('🟢 Lampu hijau! Bebas jalan: tahan 🛞 untuk maju')};
+G.endFree=function(){G.free=0;G.hold=0;G.sp=0;const w=G.w,n=CH[G.ch].n,c=w.t[Math.random()*4|0].replace(/#/g,n),d=pk(ST.filter(x=>x!==w)).t[Math.random()*4|0].replace(/#/g,n);w.s=[c];G.n=1;$('#tm').textContent='';G.st='choose';G.o=shuf([{t:c,ok:1},{t:d,ok:0}]);G.panel();msg('Dengarkan: mana bagian ceritamu tadi? 👂')};
+$('#bS').addEventListener('pointerdown',()=>{G.hold=1});['pointerup','pointercancel','pointerleave'].forEach(v=>$('#bS').addEventListener(v,()=>{G.hold=0}));
+setInterval(()=>{if(G.st!='free')return;const r=Math.max(0,Math.ceil((G.fe-Date.now())/1000));$('#tm').textContent='⏱ '+Math.floor(r/60)+':'+String(r%60).padStart(2,'0');if(r<=0)G.endFree()},250);
+const pL=G.pom;G.pom=function(){TG.visible=false;return pL()};
+const fL=G.fin;G.fin=function(){if(!G.mode)return fL();G.st='fin';G.steer=false;$('#ans').hidden=true;msg('');show(0);A.tone(988,.3);U.ov(`<div class="card"><h2 style="margin:0">🎉 Finish! ⭐</h2><p>Hebat! Kamu sudah membaca 3 cerita.</p><button id="mu">Main Lagi</button> <button id="hm2">🏠</button></div>`)};
+const h0=U.home;U.home=function(){h0();GT.visible=false;HS.visible=false;TG.visible=false;sc.hidden=true;G.free=0;G.hold=0};
+G.sv=0;try{G.sv=+localStorage.getItem('mb_lv')||0;if(G.sv>3)G.sv=0}catch(e){}
+try{G.unl=+localStorage.getItem('mb_unl')||0}catch(e){}
+
+/* ===== MODUL 7: INPUT & LOOP ===== */
+let dir=0;const key={},setDir=()=>{dir=(key.l?-1:0)+(key.r?1:0)};
+[['#bL','l'],['#bR','r']].forEach(([s,k])=>{const b=$(s),off=()=>{key[k]=0;setDir()};b.addEventListener('pointerdown',e=>{e.preventDefault();key[k]=1;setDir()});['pointerup','pointercancel','pointerleave'].forEach(v=>b.addEventListener(v,off))});
+addEventListener('keydown',e=>{if(e.key=='ArrowLeft'||e.key=='a')key.l=1;if(e.key=='ArrowRight'||e.key=='d')key.r=1;if(e.key==' '||e.key=='ArrowUp'){e.preventDefault();$('#bS').click()}setDir()});
+addEventListener('keyup',e=>{if(e.key=='ArrowLeft'||e.key=='a')key.l=0;if(e.key=='ArrowRight'||e.key=='d')key.r=0;setDir()});
+$('#bS').onclick=()=>{if(G.st=='idle')G.drive()};
+$('#hr').onclick=()=>{if(G.st=='read'||G.st=='choose')A.say(G.w.s.slice(0,G.n).join(G.lv?' ':''))};
+$('#hm').onclick=()=>U.home();
+$('#ans').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.id=='yk'){G.chk();return}if(b.id=='et'){G.tap();return}const i=+b.dataset.i;G.sel=i;A.say(G.o[i].t);[...$('#ans').children].forEach(x=>x.classList.toggle('sel',x===b));$('#yk').disabled=false});
+$('#ov').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.c!=null){G.ch=+b.dataset.c;mkP(COL[G.carN%COL.length]);U.home()}
+else if(b.id=='mD'){G.mode=0;G.lv=G.sv;G.begin()}else if(b.id=='mL'){G.mode=1;G.begin()}
+else if(b.id=='mu'){G.lv=Math.min(G.lv+1,3);G.begin()}else if(b.id=='hm2')U.home()});
+let last=0,tt=0,tlS=0;
+function upd(dt){
+for(let i=TW.length-1;i>=0;i--){const w=TW[i];w.t+=dt*1000;const p=Math.min(1,w.t/w.ms);w.f(p);if(p>=1){TW.splice(i,1);w.r()}}
+const s=G.st=='free'?(G.hold?16:0):(G.sp||0);if(TG.visible){TG.position.z+=s*dt;if(TG.position.z>40)TG.visible=false}if(s)segs.forEach(g=>{g.position.z+=s*dt;if(g.position.z>120)g.position.z-=300});
+TR.forEach(m=>{m.position.z+=(m.userData.v+s)*dt;if(m.position.z>40)m.position.z-=230;else if(m.position.z<-190)m.position.z+=230});
+segs.forEach(g=>g.peds.forEach(p=>{p.position.z+=p.userData.v*dt;if(p.position.z>0)p.position.z-=100;if(p.position.z<-100)p.position.z+=100;p.position.y=.1+Math.abs(Math.sin(tt*5+p.id))*.08}));
+CL.forEach(c=>{c.position.x+=dt*1.5;if(c.position.x>120)c.position.x=-120});
+BR.forEach((b,i)=>{b.a+=dt*(.35+i*.03);b.position.set(Math.cos(b.a)*30,10+Math.sin(b.a*2+i)*1.5,-45+Math.sin(b.a)*20);b.rotation.y=-b.a;b.wl.rotation.z=Math.sin(tt*12+i)*.6;b.wr.rotation.z=-b.wl.rotation.z});
+tlS+=dt;const red=tlS%12<7;TL.forEach(l=>{l.r.material.color.set(red?0xff2222:0x551111);l.g.material.color.set(red?0x114422:0x22dd44)});
+if(G.steer){const c=P.g;G.vx+=((dir*7)-G.vx)*Math.min(1,dt*8);c.position.x=Math.max(G.free?-6:.2,Math.min(G.free?6:4.6,c.position.x+G.vx*dt));c.rotation.y=-G.vx*.04}
+if(board.visible)board.position.x=P.g.position.x;
+if(G.st=='read'&&G.tl>0){G.tl-=dt;$('#tm').textContent='⏳ '+Math.max(0,Math.ceil(G.tl));if(G.tl<=0){$('#tm').textContent='';G.rev()}}else if(G.st!='read'&&G.st!='free')$('#tm').textContent='';
+const f=G.foc||P.g.position;cam.position.set(f.x*.6,5.4,f.z+10.5);cam.lookAt(f.x*.9,1.6,f.z-12)}
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000||0);last=now;tt+=dt;upd(dt);R.render(S,cam)}
+function rs(){const w=innerWidth,h=innerHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.fov=w/h<1?78:60;cam.updateProjectionMatrix()}
+addEventListener('resize',rs);
+
+theme(0);buildWorld();mkP(COL[0]);rs();U.home();requestAnimationFrame(loop);
+})();
+</script></body></html>
